@@ -1,0 +1,12 @@
+{
+  "name": "pebble-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/mapldx/pebble",
+  "author": "Zachary Sy",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
