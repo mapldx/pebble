@@ -1,0 +1,22 @@
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    authorizationCode VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    familyName VARCHAR(255),
+    givenName VARCHAR(255),
+    middleName VARCHAR(255),
+    namePrefix VARCHAR(255),
+    nameSuffix VARCHAR(255),
+    nickname VARCHAR(255),
+    identityToken TEXT,
+    realUserStatus INT,
+    state VARCHAR(255),
+    appleUserId VARCHAR(255) UNIQUE NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO users 
+(authorizationCode, email, familyName, givenName, middleName, namePrefix, nameSuffix, nickname, identityToken, realUserStatus, state, appleUserId, createdAt, updatedAt)
+VALUES 
+('sampleAuthCode123', 'sampleuser@sample.com', 'Doe', 'John', 'M', 'Mr.', 'Jr.', 'Johnny', 'sampleIdentityToken123', 2, 'sampleState', '001234.sampleUserIdentifier.5678', NOW(), NOW());
