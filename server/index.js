@@ -45,7 +45,35 @@ app.get('/api/auth/get', (req, res) => {
       if (results.length === 0) return res.status(404).json({ error: 'User not found' });
       res.status(200).json({ email: results[0].email });
   });
-})
+});
+
+app.post('/api/tasks/create', (req, res) => {
+  try {
+    const { uid, title, description, taskSize, dueDate } = req.body;
+
+    if (!title || !taskSize || !['Pebble', 'Cobble', 'Boulder'].includes(taskSize)) {
+      return res.status(400).send('Invalid input');
+    }
+
+    const query = `
+      INSERT INTO tasks (appleUserId, title, description, taskSize, dueDate)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    const values = [uid, title, description, taskSize, dueDate];
+
+    db.query(query, values, (error, results) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+      }
+      res.json({ taskId: results.insertId });
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Server error');
+  }
+});
 
 const port = process.env.PORT || 3000;
 
