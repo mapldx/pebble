@@ -49,17 +49,17 @@ app.get('/api/auth/get', (req, res) => {
 
 app.post('/api/tasks/create', (req, res) => {
   try {
-    const { uid, title, description, taskSize, dueDate } = req.body;
+    const { uid, title, description, taskSize, status, assignedDate, dueDate } = req.body;
 
     if (!title || !taskSize || !['Pebble', 'Cobble', 'Boulder'].includes(taskSize)) {
       return res.status(400).send('Invalid input');
     }
 
     const query = `
-      INSERT INTO tasks (appleUserId, title, description, taskSize, dueDate)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO tasks (appleUserId, title, description, taskSize, status, assignedDate, dueDate)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    const values = [uid, title, description, taskSize, dueDate];
+    const values = [uid, title, description, taskSize, status, assignedDate, dueDate];
 
     db.query(query, values, (error, results) => {
       if (error) {
@@ -67,6 +67,101 @@ app.post('/api/tasks/create', (req, res) => {
         return res.status(500).json({ error: error.message });
       }
       res.json({ taskId: results.insertId });
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Server error');
+  }
+});
+
+app.get('/api/tasks/get', (req, res) => {
+  const userId = req.query.uid;
+  const query = 'SELECT * FROM tasks WHERE appleUserId = ?';
+  db.query(query, [userId], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ tasks: results });
+  });
+});
+
+app.put('/api/tasks/update', (req, res) => {
+  console.log(req.body);
+  try {
+    const { taskId, title, description, taskSize, status, assignedDate, dueDate } = req.body;
+
+    if (!taskId) {
+      return res.status(400).send('Invalid input');
+    }
+
+    let query = 'UPDATE tasks SET ';
+    let values = [];
+
+    if (title) {
+      query += 'title = ?, ';
+      values.push(title);
+    }
+
+    if (description) {
+      query += 'description = ?, ';
+      values.push(description);
+    }
+
+    if (taskSize) {
+      query += 'taskSize = ?, ';
+      values.push(taskSize);
+    }
+
+    if (status) {
+      query += 'status = ?, ';
+      values.push(status);
+    }
+
+    if (assignedDate) {
+      query += 'assignedDate = ?, ';
+      values.push(assignedDate);
+    }
+
+    if (dueDate) {
+      query += 'dueDate = ?, ';
+      values.push(dueDate);
+    }
+
+    query = query.slice(0, -2);
+    query += ' WHERE id = ?';
+    values.push(taskId);
+
+    db.query(query, values, (error) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+      }
+      res.json({ message: 'Task updated successfully' });
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Server error');
+  }
+});
+
+app.post('/api/tasks/delete', (req, res) => {
+  console.log(req.body);
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).send('Invalid input');
+    }
+
+    const query = 'DELETE FROM tasks WHERE id = ?';
+    const values = [id];
+
+    db.query(query, values, (error) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+      }
+      res.json({ message: 'Task deleted successfully' });
     });
 
   } catch (e) {
