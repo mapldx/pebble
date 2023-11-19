@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "pebble",
+    "name": "Pebble",
     "slug": "pebble",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,8 @@
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "bundleIdentifier": "com.mapldx.pebble"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,6 +35,17 @@
     },
     "plugins": [
       "expo-apple-authentication"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "873b3597-4df9-4e44-8492-15560a65b995"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/873b3597-4df9-4e44-8492-15560a65b995"
+    }
   }
 }

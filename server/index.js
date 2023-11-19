@@ -22,18 +22,18 @@ app.get('/api/auth/check', (req, res) => {
 app.post('/api/auth/create', (req, res) => {
   try {
     const data = req.body.credential;
-    console.log(data);
+    // console.log(data);
     const query = `INSERT INTO users (authorizationCode, email, familyName, givenName, middleName, namePrefix, nameSuffix, nickname, identityToken, realUserStatus, state, appleUserId)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const values = [data.authorizationCode, data.email, data.fullName.familyName, data.fullName.givenName, data.fullName.middleName, data.fullName.namePrefix, data.fullName.nameSuffix, data.fullName.nickname, data.identityToken, data.realUserStatus, data.state, data.user];
     
     db.query(query, values, (error) => { 
-        console.log(error);
+        // console.log(error);
         if (error) return res.status(500).json({ error: error.message });
         res.status(200).json({ message: 'User created successfully' });
     });
   } catch (e) {
-    console.log(e);
+    // console.log(e);
   }
 });
 
@@ -47,7 +47,17 @@ app.get('/api/auth/get', (req, res) => {
   });
 });
 
+app.put('/api/auth/update', (req, res) => {
+  const userId = req.query.uid;
+  const query = 'UPDATE users SET icsFeedUrl = ? WHERE appleUserId = ?';
+  db.query(query, [req.body.icsFeedUrl, userId], (error) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ message: 'User updated successfully' });
+  });
+});
+
 app.post('/api/tasks/create', (req, res) => {
+  // console.log(req.body);
   try {
     const { uid, title, description, taskSize, status, assignedDate, dueDate } = req.body;
 
@@ -77,17 +87,20 @@ app.post('/api/tasks/create', (req, res) => {
 
 app.get('/api/tasks/get', (req, res) => {
   const userId = req.query.uid;
-  const query = 'SELECT * FROM tasks WHERE appleUserId = ?';
+  let query = 'SELECT * FROM tasks WHERE appleUserId = ?';
   db.query(query, [userId], (error, results) => {
       if (error) return res.status(500).json({ error: error.message });
-      res.status(200).json({ tasks: results });
+      query = 'UPDATE users SET lastLoginAt = NOW() WHERE appleUserId = ?';
+      db.query(query, [userId], (error) => {
+        if (error) return res.status(500).json({ error: error.message });
+        res.status(200).json({ tasks: results });
+      });
   });
 });
 
 app.put('/api/tasks/update', (req, res) => {
-  console.log(req.body);
   try {
-    const { taskId, title, description, taskSize, status, assignedDate, dueDate } = req.body;
+    const { taskId, title, description, taskSize, status, assignedDate, dueDate, icsFeedUrl } = req.body;
 
     if (!taskId) {
       return res.status(400).send('Invalid input');
@@ -145,7 +158,7 @@ app.put('/api/tasks/update', (req, res) => {
 });
 
 app.post('/api/tasks/delete', (req, res) => {
-  console.log(req.body);
+  // console.log(req.body);
   try {
     const { id } = req.body;
 

@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useRef, createRef } from 'react';
-import { Text, View, SafeAreaView, TextInput, Button, TouchableWithoutFeedback, Keyboard, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import { Text, 
+  View, 
+  SafeAreaView, 
+  TextInput, 
+  Button, 
+  TouchableWithoutFeedback, 
+  Keyboard, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert 
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 
 import { Modalize } from 'react-native-modalize';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
@@ -15,14 +25,15 @@ import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 import { startOfWeek, eachDayOfInterval, format } from 'date-fns';
 
-export default function Page() {
+import moment from 'moment';
+
+export default function Home() {
   const navigation = useNavigation();
   const modalizeRef = useRef(null);
   const controlRef = useRef(null);
-  const swipeableRef = useRef(null);
+  const isFocused = useIsFocused();
 
   const [tasks, setTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [taskSize, setTaskSize] = useState('Pebble');
@@ -30,6 +41,7 @@ export default function Page() {
 
   const [uid, setUid] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [newWeekStart, setNewWeekStart] = useState(null);
 
   const onTaskPress = (task) => {
     setSelectedTask(task);
@@ -37,11 +49,11 @@ export default function Page() {
   };
 
   const assignTaskToDay = async (task, day) => {
-    let response = await axios.put('http://192.168.1.133:3000/api/tasks/update', { taskId: task.id, assignedDate: day }).catch(error => {
+    let response = await axios.put('https://pebble-server.fly.dev/api/tasks/update', { taskId: task.id, assignedDate: day }).catch(error => {
       console.error(error);
     });
     if (response && response.status === 200) {
-      console.log('Successfully updated task');
+      // console.log('Successfully updated task');
     }
     fetchTasks();
   };
@@ -68,6 +80,7 @@ export default function Page() {
     if (selectedDate === undefined || selectedDate === null) {
       selectedDate = new Date();
     }
+    selectedDate.setDate(selectedDate.getDate() + 1);
     const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
     setDueDate(formattedDate);
   };
@@ -80,21 +93,40 @@ export default function Page() {
     async function uidAssign() {
       const uid = await getValueFor('uid');
       setUid(uid);
+      /*
       if (uid === null) {
-        alert('Log in via settings to sync your tasks');
+        Alert.alert('Hey there, stranger... 👋', 'Welcome to Pebble, please login to get started!', [
+          {
+            text: 'Let\'s do it!',
+            onPress: () => navigation.navigate('Settings'),
+          },
+        ]);
       }
+      */
       await fetchTasks();
     }
     uidAssign();
+    setNewWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   }, []);
+
+  useEffect(() => {
+    async function uidAssign() {
+      const uid = await getValueFor('uid');
+      setUid(uid);
+      await fetchTasks();
+    }
+    uidAssign();
+  }, [isFocused]);
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`http://192.168.1.133:3000/api/tasks/get?uid=${await getValueFor('uid')}`).catch(error => console.error(error));
+      const response = await axios.get(`https://pebble-server.fly.dev/api/tasks/get?uid=${await getValueFor('uid')}`).catch(error => console.error(error));
+      // // console.log(response);
       const data = await response.data.tasks;
       setTasks(data);
+      // // console.log(data);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      // console.log(error);
     }
   };
 
@@ -112,8 +144,39 @@ export default function Page() {
   }
 
   const handleCreateTask = async () => {
+    if (uid === null) {
+      Alert.alert('Hey there, stranger... 👋', 'Welcome to Pebble, it looks like you\'re not logged in.\n\nLog in now to start creating tasks!', [
+        {
+          text: 'Let\'s do it!',
+          onPress: () => navigation.navigate('Settings'),
+        },
+      ]);
+      return;
+    }
+    const today = new Date();
+    try {
+      const isValid = format(new Date(dueDate), 'yyyy-MM-dd') >= format(today, 'yyyy-MM-dd');
+      if (!isValid) {
+        throw new Error('Invalid date');
+      }
+    } catch {
+      Alert.alert('Invalid date', 'A due date cannot be in the past. Please try again.', [
+        {
+          text: 'OK',
+        }
+      ]);
+      return;
+    }
+    if (title === '') {
+      Alert.alert('Invalid title', 'A title cannot be empty. Please try again.', [
+        {
+          text: 'OK',
+        }
+      ]);
+      return;
+    }
     const taskData = {
-      uid,
+      uid: await getValueFor('uid'),
       title,
       description: null,
       taskSize,
@@ -123,7 +186,7 @@ export default function Page() {
     };
 
     try {
-      const response = await axios.post('http://192.168.1.133:3000/api/tasks/create', taskData);
+      const response = await axios.post('https://pebble-server.fly.dev/api/tasks/create', taskData);
 
       if (response.status === 200) {
         taskData.createdAt = new Date().toISOString();
@@ -187,7 +250,7 @@ export default function Page() {
 
   const markTaskAsDone = async (taskId, currentRef) => {
     try {
-      const response = await axios.put('http://192.168.1.133:3000/api/tasks/update', {
+      const response = await axios.put('https://pebble-server.fly.dev/api/tasks/update', {
         taskId: taskId,
         status: 'Completed'
       });
@@ -209,7 +272,7 @@ export default function Page() {
 
   const markTaskAsNotDone = async (taskId, currentRef) => {
     try {
-      const response = await axios.put('http://192.168.1.133:3000/api/tasks/update', {
+      const response = await axios.put('https://pebble-server.fly.dev/api/tasks/update', {
         taskId: taskId,
         status: 'Not Started'
       });
@@ -231,7 +294,7 @@ export default function Page() {
 
   const deleteTask = async (id) => {
     try {
-      const response = await axios.post(`http://192.168.1.133:3000/api/tasks/delete`, {
+      const response = await axios.post(`https://pebble-server.fly.dev/api/tasks/delete`, {
         id: id
       });
       controlRef.current?.close();
@@ -246,73 +309,77 @@ export default function Page() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <SafeAreaView className="flex-1">
-          <View className="flex-1 p-4">
-            <Text className="self-start text-4xl font-extrabold">Your Pebblespace</Text>
-            <View className="pt-6 mb-2">
-              <View className="flex-row justify-between">
-                <Text className="text-md opacity-50 mb-2">UNASSIGNED</Text>
+          <ScrollView>
+            <View className="flex-1 p-4">
+              <View className="flex-row justify-between items-center">
+                <Text className="self-start text-4xl font-extrabold">Your Pebblespace</Text>
               </View>
-              <FlatList
-                data={tasks.filter(task => format(new Date(task.assignedDate), 'yyyy-MM-dd') === '1970-01-01')}
-                renderItem={({ item: task }) => (
-                  <TouchableOpacity key={task.createdAt} className="flex-row items-center justify-between w-full mb-1" onPress={() => onTaskPress(task)}>
-                    <Text className="text-lg font-semibold break-normal w-1/2">{task.title}</Text>
-                    <View className="flex-row items-center w-1/2 justify-end">
-                      <Text className={`text-gray-400 font-semibold`}>{formatDate(task.dueDate)}</Text>
-                      <View className={`flex-row items-center p-2 px-2 ml-4 ${getBadgeStyle(task.taskSize)} rounded-lg w-1/2`}>
-                        <Text>{taskSizeIcon(task.taskSize)}</Text>
-                        <Text className={`ml-2 text-white font-semibold`}>{task.taskSize}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                keyExtractor={task => task.id}
-              />
-            </View>
-            <View className="pt-3">
-              <FlatList
-                data={weekDays}
-                renderItem={({ item: day }) => {
-                  const tasksForTheDay = tasks.filter(task => format(new Date(task.assignedDate), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'));
+              <View className="pt-6 mb-2">
+                <View className="flex-row justify-between">
+                  <Text className="text-md opacity-50 mb-2">UNASSIGNED</Text>
+                </View>
+                {tasks.filter(task => 
+                  moment.utc(new Date(task.assignedDate)).format('YYYY-MM-DD') === '1970-01-01' ||
+                  moment.utc(new Date(newWeekStart)).format('YYYY-MM-DD') > moment.utc(new Date(task.assignedDate)).format('YYYY-MM-DD') && task.status !== 'Completed'
+                ).map(task => {
                   return (
-                    <View key={format(day, 'yyyy-MM-dd')} className="mb-5">
-                      <Text className="text-md opacity-50 mb-2">{format(day, 'EE, MMM dd').toUpperCase()}</Text>
-                      <FlatList
-                        data={tasksForTheDay}
-                        renderItem={({ item: task }) => {
-                          const currentRef = createRef();
-                          return (
-                            <Swipeable
-                              ref={currentRef}
-                              renderLeftActions={renderLeftActions}
-                              renderRightActions={renderRightActions}
-                              onSwipeableLeftOpen={() => markTaskAsDone(task.id, currentRef)}
-                              onSwipeableRightOpen={() => markTaskAsNotDone(task.id, currentRef)}
-                            >
-                              <TouchableOpacity key={task.createdAt} className="flex-row items-center justify-between w-full mb-1" onPress={() => onTaskPress(task)} 
-                                style={task.status == "Completed" && { textDecorationLine: 'line-through', opacity: 0.5 }}>
-                                <Text className="text-lg font-semibold break-normal w-1/2" style={task.status == "Completed" && { textDecorationLine: 'line-through' }}>{task.title}</Text>
-                                <View className="flex-row items-center w-1/2 justify-end">
-                                  <Text className={`text-gray-400 font-semibold`}>{formatDate(task.dueDate)}</Text>
-                                  <View className={`flex-row items-center p-2 px-2 ml-4 ${getBadgeStyle(task.taskSize)} rounded-lg w-1/2`}>
-                                    <Text>{taskSizeIcon(task.taskSize)}</Text>
-                                    <Text className={`ml-2 text-white font-semibold`}>{task.taskSize}</Text>
+                    <TouchableOpacity key={task.createdAt} className="flex-row items-center justify-between w-full mb-1" onPress={() => onTaskPress(task)}>
+                      <Text className="text-lg font-semibold break-normal w-1/2">{task.title}</Text>
+                      <View className="flex-row items-center w-1/2 justify-end">
+                        <Text className={`text-gray-400 font-semibold`}>{formatDate(task.dueDate)}</Text>
+                        <View className={`flex-row items-center p-2 px-2 ml-4 ${getBadgeStyle(task.taskSize)} rounded-lg w-1/2`}>
+                          <Text>{taskSizeIcon(task.taskSize)}</Text>
+                          <Text className={`ml-2 text-white font-semibold`}>{task.taskSize}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <View className="pt-3">
+                {weekDays.map(day => {
+                  const tasksForTheDay = tasks.filter(task => moment.utc(new Date(task.assignedDate)).format('YYYY-MM-DD') === moment.utc(day).format('YYYY-MM-DD'));
+                  return (
+                    <TouchableOpacity activeOpacity={1} key={moment.utc(day).format('YYYY-MM-DD')}>
+                      <View className="mb-5">
+                        <Text className="text-md opacity-50 mb-2">{moment.utc(day).format('ddd, MMM DD').toUpperCase()}</Text>
+                        {tasksForTheDay.length === 0 ? (
+                          <TouchableOpacity></TouchableOpacity>
+                        ) : (
+                          tasksForTheDay.map(task => {
+                            const currentRef = createRef();
+                            return (
+                              <Swipeable
+                                ref={currentRef}
+                                renderLeftActions={renderLeftActions}
+                                renderRightActions={renderRightActions}
+                                onSwipeableLeftOpen={() => markTaskAsDone(task.id, currentRef)}
+                                onSwipeableRightOpen={() => markTaskAsNotDone(task.id, currentRef)}
+                              >
+                                <TouchableOpacity key={task.createdAt} className="flex-row items-center justify-between w-full mb-1" onPress={() => onTaskPress(task)}
+                                  style={task.status == "Completed" && { textDecorationLine: 'line-through', opacity: 0.5 }}>
+                                  <Text className="text-lg font-semibold break-normal w-1/2" style={task.status == "Completed" && { textDecorationLine: 'line-through' }}>{task.title}</Text>
+                                  <View className="flex-row items-center w-1/2 justify-end">
+                                    <Text className={`text-gray-400 font-semibold`}>{formatDate(task.dueDate)}</Text>
+                                    <View className={`flex-row items-center p-2 px-2 ml-4 ${getBadgeStyle(task.taskSize)} rounded-lg w-1/2`}>
+                                      <Text>{taskSizeIcon(task.taskSize)}</Text>
+                                      <Text className={`ml-2 text-white font-semibold`}>{task.taskSize}</Text>
+                                    </View>
                                   </View>
-                                </View>
-                              </TouchableOpacity>
-                            </Swipeable>
-                          );
-                        }}
-                        keyExtractor={task => task.createdAt.toString()}
-                      />
-                    </View>
+                                </TouchableOpacity>
+                              </Swipeable>
+                            );
+                          })
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   );
-                }}
-                keyExtractor={day => format(day, 'yyyy-MM-dd')}
-              />
+                })}
+
+              </View>
+              <StatusBar style="auto" />
             </View>
-            <StatusBar style="auto" />
-          </View>
+          </ScrollView>
           <View className="fixed bottom-0 left-0 right-0 p-6 flex-row justify-between">
             <TouchableOpacity
               className="flex-row items-center"
@@ -408,9 +475,11 @@ export default function Page() {
                   <View className="flex-row flex-wrap items-center">
                     {weekDays.map(day => {
                       const dayFormat = format(day, 'yyyy-MM-dd');
+                      {/*
                       if (selectedTask && selectedTask.assignedDate && format(new Date(selectedTask.assignedDate), 'yyyy-MM-dd') === dayFormat) {
                         return null;
                       }
+                      */}
                       return (
                         <TouchableOpacity key={day} onPress={() => handleAssignDate(dayFormat)} className="bg-blue-200 mr-2 mt-3 p-2 rounded-lg">
                           <Text>{format(day, 'EE, MMM dd')}</Text>
