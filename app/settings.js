@@ -101,51 +101,105 @@ export default function Settings() {
                 <StatusBar style="auto" />
               </View>
               <View className="m-3 flex-1 rounded-lg pt-6">
-                {uid && (
+                {true && (
                   <View>
                     <TouchableOpacity activeOpacity={1}>
                       <Text className="mb-2 px-3 opacity-50">ACCOUNT</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity className="bg-gray-300 rounded-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
-                      onPress={async () => {
-                        Alert.alert(
-                          "Manage account",
-                          `You are logged in as ${email}.\n\nThank you for being a part of the Pebble community! 🎉`,
-                          [
-                            {
-                              text: "Back",
-                              style: "cancel"
-                            },
-                            {
-                              text: "Sign out", onPress: async () => {
-                                await SecureStore.deleteItemAsync('uid');
-                                setUid(null);
-                                setAuthApple(false);
-                              }
-                            }
-                          ],
-                          { cancelable: false }
-                        );
-                      }}
-                    >
-                      <Ionicons name="person" size={24} color="gray" />
-                      <Text className="text-md font-bold">Manage account</Text>
-                      <Ionicons name="ios-arrow-forward" size={24} color="gray" />
-                    </TouchableOpacity>
-                    {
-                      /* <TouchableOpacity className="bg-gray-300 rounded-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
+                    {uid ? (
+                      <View>
+                        <TouchableOpacity className="bg-gray-300 rounded-t-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
+                          onPress={async () => {
+                            Alert.alert(
+                              "Manage account",
+                              `You are logged in as ${email}.\n\nThank you for being a part of the Pebble community! 🎉`,
+                              [
+                                {
+                                  text: "Back",
+                                  style: "cancel"
+                                },
+                                {
+                                  text: "Sign out", onPress: async () => {
+                                    await SecureStore.deleteItemAsync('uid');
+                                    await SecureStore.deleteItemAsync('smartTaskCreation');
+                                    setUid(null);
+                                    setAuthApple(false);
+                                  }
+                                }
+                              ],
+                              { cancelable: false }
+                            );
+                          }}
+                        >
+                          <Ionicons name="person" size={24} color="gray" />
+                          <Text className="text-md font-bold">Manage account</Text>
+                          <Ionicons name="ios-arrow-forward" size={24} color="gray" />
+                        </TouchableOpacity>
+                        <TouchableOpacity className="bg-gray-300 rounded-b-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
                           onPress={async () => {
                             navigation.navigate('Report');
                           }}
                         >
                           <Ionicons name="bar-chart" size={24} color="gray" />
-                          <Text className="text-md font-bold">Create a report</Text>
+                          <Text className="text-md font-bold">View your Pebblepulse</Text>
                           <Ionicons name="ios-arrow-forward" size={24} color="gray" />
-                        </TouchableOpacity> */
-                    }
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View className="pt-4 items-center align-center">
+                        <AppleAuthentication.AppleAuthenticationButton
+                          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                          cornerRadius={10}
+                          style={styles.button}
+                          onPress={async () => {
+                            if (uid === null) {
+                              try {
+                                const credential = await AppleAuthentication.signInAsync({
+                                  requestedScopes: [
+                                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                                  ],
+                                });
+                                if (uid === null || !authApple) {
+                                  axios.get('https://pebble-server.fly.dev/api/auth/check?uid=' + credential.user).then((response) => {
+                                    if (response.data.exists) {
+                                      // console.log('User exists');
+                                    } else {
+                                    }
+                                  }).catch((error) => {
+                                    // alert('Error creating user: ' + error);
+                                    // console.log('User does not exist');
+                                    // console.log(credential);
+                                    axios.post('https://pebble-server.fly.dev/api/auth/create', {
+                                      credential: credential,
+                                    }).then((response) => {
+                                      // alert(response);
+                                      // console.log(response);
+                                    }).catch((error) => {
+                                      // alert('Error creating user: ' + error);
+                                    });
+                                  });
+                                  await SecureStore.setItemAsync('uid', credential.user);
+                                  setUid(credential.user);
+                                }
+                              } catch (e) {
+                                if (e.code === 'ERR_REQUEST_CANCELED') {
+                                  // alert('User cancelled sign in');
+                                } else {
+                                  // alert('Error signing in: ' + e);
+                                }
+                              }
+                            } else {
+                              alert('You are already signed in as ' + email);
+                            }
+                          }}
+                        />
+                      </View>
+                    )}
                   </View>
                 )}
-                {uid && (
+                {true && (
                   <View>
                     <TouchableOpacity activeOpacity={1}>
                       <Text className="mb-2 px-3 opacity-50 mt-6">GENERAL</Text>
@@ -169,6 +223,35 @@ export default function Settings() {
                       <Text className="text-md font-bold">Tips & tricks</Text>
                       <Ionicons name="ios-arrow-forward" size={24} color="gray" />
                     </TouchableOpacity>
+                    { /*
+                      <TouchableOpacity className="bg-gray-300 rounded-t-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Smart task creation is an experimental feature",
+                          `The traditional method is what you might be used to. You create a task, assign it a name, workload estimate, and due date.\n\nSmart task creation is a new way to create tasks powered by natural language processing (NLP). Create a task by simply typing as you would do sending a text and adding a hashtag, e.g. Pay electric by next Thurs #pebble.`,
+                          [
+                            {
+                              text: "Disable", onPress: async (value) => {
+                                alert("Smart task creation is now disabled.")
+                                await SecureStore.setItemAsync('smartTaskCreation', 'false');
+                              }
+                            },
+                            {
+                              text: "Enable", onPress: async (value) => {
+                                alert("Smart task creation is now enabled. You can disable it at any time.\n\nNote: this feature is experimental and might not work as expected at times. Let us know if you have any feedback!")
+                                await SecureStore.setItemAsync('smartTaskCreation', 'true');
+                                // console.log(await getValueFor('smartTaskCreation'));
+                              }
+                            }
+                          ]
+                        )
+                      }}
+                    >
+                      <Ionicons name="md-text" size={24} color="gray" />
+                      <Text className="text-md font-bold">Toggle smart task creation</Text>
+                      <Ionicons name="ios-arrow-forward" size={24} color="gray" />
+                    </TouchableOpacity>
+                    */ }
                     <TouchableOpacity className="bg-gray-300 rounded-t-lg border-b border-gray-200 p-4 -mb-1" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', padding: 16 }}
                       onPress={() => {
                         Alert.alert(
@@ -209,7 +292,7 @@ export default function Settings() {
                     </TouchableOpacity>
                   </View>
                 )}
-                {uid && (
+                {true && (
                   <View>
                     <TouchableOpacity activeOpacity={1}>
                       <Text className="mb-2 px-3 opacity-50 mt-6">SUPPORT</Text>
@@ -253,59 +336,6 @@ export default function Settings() {
                     </TouchableOpacity>
                   </View>
                 )}
-                {uid === null && (
-                  <View className="pt-6 items-center align-center">
-                    <AppleAuthentication.AppleAuthenticationButton
-                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                      cornerRadius={10}
-                      style={styles.button}
-                      onPress={async () => {
-                        if (uid === null) {
-                          try {
-                            const credential = await AppleAuthentication.signInAsync({
-                              requestedScopes: [
-                                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                                AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                              ],
-                            });
-                            if (uid === null || !authApple) {
-                              axios.get('https://pebble-server.fly.dev/api/auth/check?uid=' + credential.user).then((response) => {
-                                if (response.data.exists) {
-                                  // console.log('User exists');
-                                } else {
-                                }
-                              }).catch((error) => {
-                                // alert('Error creating user: ' + error);
-                                // console.log('User does not exist');
-                                // console.log(credential);
-                                axios.post('https://pebble-server.fly.dev/api/auth/create', {
-                                  credential: credential,
-                                }).then((response) => {
-                                  // alert(response);
-                                  // console.log(response);
-                                }).catch((error) => {
-                                  // alert('Error creating user: ' + error);
-                                });
-                              });
-                              await SecureStore.setItemAsync('uid', credential.user);
-                              setUid(credential.user);
-                            }
-                          } catch (e) {
-                            if (e.code === 'ERR_REQUEST_CANCELED') {
-                              // alert('User cancelled sign in');
-                            } else {
-                              // alert('Error signing in: ' + e);
-                            }
-                          }
-                        } else {
-                          alert('You are already signed in as ' + email);
-                        }
-                      }}
-                    />
-                    <Text className="mt-3 mb-3 text-center opacity-60">{authApple ? `${email} is authenticated as ${uid}` : ""}</Text>
-                  </View>
-                )}
               </View>
             </View>
           </View>
@@ -317,7 +347,7 @@ export default function Settings() {
         </TouchableOpacity>
         <View className="pt-6">
           <Text className="self-center font-bold">made with 🥐 at mapl labs</Text>
-          <Text className="self-center">v1.0.0 - beta release</Text>
+          <Text className="self-center">v1.1.1 - beta release</Text>
         </View>
       </SafeAreaView>
     </TouchableWithoutFeedback>

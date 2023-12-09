@@ -131,6 +131,9 @@ app.put('/api/tasks/update', (req, res) => {
 
     if (assignedDate) {
       query += 'assignedDate = ?, ';
+      if (assignedDate === '1970-01-01') {
+        query += 'numPostpone = numPostpone + 1, ';
+      }
       values.push(assignedDate);
     }
 
@@ -181,6 +184,67 @@ app.post('/api/tasks/delete', (req, res) => {
     console.error(e);
     res.status(500).send('Server error');
   }
+});
+
+app.get('/api/report/completed', (req, res) => {
+  const userId = req.query.uid;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+  const taskSize = req.query.taskSize || '';
+
+  const query = 'CALL GetCompletedTasksCount(?, ?, ?, ?)';
+  db.query(query, [userId, startDate, endDate, taskSize], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ completedTasksCount: results[0][0].completedTasksCount });
+  });
+});
+
+app.get('/api/report/postpones', async (req, res) => {
+  const userId = req.query.uid;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+  const taskSize = req.query.taskSize || '';
+
+  const query = 'CALL GetUserPostponesCount(?, ?, ?, ?)';
+  db.query(query, [userId, startDate, endDate, taskSize], (error, results) => {
+      // console.log(query, [userId, startDate, endDate, taskSize])
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ totalPostpones: results[0][0].totalPostpones });
+  });
+});
+
+app.get('/api/report/productive', async (req, res) => {
+  const userId = req.query.uid;
+  const taskSize = req.query.taskSize || '';
+
+  const query = 'CALL GetMostProductiveDay(?, ?)';
+  db.query(query, [userId, taskSize], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ productiveDays: results[0][0] });
+  });
+});
+
+app.get('/api/report/weekend', async (req, res) => {
+  const userId = req.query.uid;
+  const taskSize = req.query.taskSize || '';
+
+  const query = 'CALL GetWeekendCompletionRate(?, ?)';
+  db.query(query, [userId, taskSize], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      let weekendCompletionRate = results[0][0].weekendCompletionRate;
+      res.status(200).json({ weekendCompletionRate: parseInt(weekendCompletionRate) });
+  });
+});
+
+app.get('/api/report/total', async (req, res) => {
+  const userId = req.query.uid;
+  const taskSize = req.query.taskSize || '';
+
+  const query = 'CALL GetTotalCompletedTasks(?, ?)';
+  db.query(query, [userId, taskSize], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ totalTasksCompleted: results[0][0].totalCompleted });
+  });
 });
 
 const port = process.env.PORT || 3000;

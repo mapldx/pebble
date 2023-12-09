@@ -12,11 +12,24 @@ CREATE TABLE users (
     realUserStatus INT,
     state VARCHAR(255),
     appleUserId VARCHAR(255) UNIQUE NOT NULL,
+    icsFeedUrl VARCHAR(255),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lastLoginAt TIMESTAMP NULL DEFAULT NULL,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-INSERT INTO users 
-(authorizationCode, email, familyName, givenName, middleName, namePrefix, nameSuffix, nickname, identityToken, realUserStatus, state, appleUserId, createdAt, updatedAt)
-VALUES 
-('sampleAuthCode123', 'sampleuser@sample.com', 'Doe', 'John', 'M', 'Mr.', 'Jr.', 'Johnny', 'sampleIdentityToken123', 2, 'sampleState', '001234.sampleUserIdentifier.5678', NOW(), NOW());
+CREATE TABLE tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appleUserId VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    taskSize ENUM('Pebble', 'Cobble', 'Boulder') NOT NULL,
+    status ENUM('Not Started', 'Completed') NOT NULL DEFAULT 'Not Started',
+    assignedDate DATE,
+    dueDate DATE NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    numPostpone INT DEFAULT 0,
+    lastPostponeAt DATE,
+    FOREIGN KEY (appleUserId) REFERENCES users(appleUserId)
+);
