@@ -88,7 +88,7 @@ export default function Home() {
     if (selectedDate === undefined || selectedDate === null) {
       selectedDate = new Date();
     }
-    selectedDate.setDate(selectedDate.getDate() + 1);
+    selectedDate.setDate(selectedDate.getDate());
     const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
     setDueDate(formattedDate);
   };
@@ -199,19 +199,6 @@ export default function Home() {
       };
     } else {
       const today = new Date();
-      try {
-        const isValid = format(new Date(dueDate), 'yyyy-MM-dd') >= format(today, 'yyyy-MM-dd');
-        if (!isValid) {
-          throw new Error('Invalid date');
-        }
-      } catch {
-        Alert.alert('Invalid date', 'A due date cannot be in the past. Please try again.', [
-          {
-            text: 'OK',
-          }
-        ]);
-        return;
-      }
       if (title === '') {
         Alert.alert('Invalid title', 'A title cannot be empty. Please try again.', [
           {

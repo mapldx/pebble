@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, SafeAreaView, StyleSheet, TouchableWithoutFeedback, TouchableOpacity, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,8 @@ export default function Report() {
   const [datePickerValue, setDatePickerValue] = useState('2023-01-01');
   const [workloadPickerValue, setWorkloadPickerValue] = useState('all');
 
+  const [taskSizes, setTaskSizes] = useState([]);
+
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [weekChange, setWeekChange] = useState(0);
   const [postpones, setPostpones] = useState(0);
@@ -27,7 +29,6 @@ export default function Report() {
   const [weekendCompletionRate, setWeekendCompletionRate] = useState(0);
 
   const [totalCompletedTasks, setTotalCompletedTasks] = useState(0);
-
 
   const styles = StyleSheet.create({
     picker: {
@@ -199,12 +200,34 @@ export default function Report() {
     });
   }
 
+  async function getTaskSizes() {
+    let uid = await getValueFor('uid');
+
+    await axios.get('https://pebble-server.fly.dev/api/report/sizes', {
+      params: {
+        uid: uid,
+      }
+    }).then((response) => {
+      let taskSizes = response.data.taskSizes;
+      taskSizes = taskSizes.map((taskSize) => {
+        return {
+          label: taskSize.taskSize,
+          value: (taskSize.taskSize).toLowerCase(),
+        }
+      });
+      setTaskSizes(taskSizes);
+    }).catch((error) => {
+      // console.log(error);
+    });
+  }
+
   async function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
 
   useEffect(() => {
     if (datePickerValue && workloadPickerValue) {
+      getTaskSizes();
       getCompletedTasksCount();
       getPostponesCount();
       computeWeekChange();
@@ -219,6 +242,7 @@ export default function Report() {
   }, [tasksCompleted]);
 
   useEffect(() => {
+    getTaskSizes();
     getCompletedTasksCount();
     getPostponesCount();
     computeWeekChange();
@@ -270,11 +294,7 @@ export default function Report() {
                     onValueChange={(value) => setWorkloadPickerValue(value)}
                     onChange={(value) => setWorkloadPickerValue(value)}
                     placeholder={{ label: 'All workloads', value: 'all' }}
-                    items={[
-                      { label: 'Pebble', value: 'pebble' },
-                      { label: 'Cobble', value: 'cobble' },
-                      { label: 'Boulder', value: 'boulder' },
-                    ]}
+                    items={taskSizes}
                     style={styles.picker}
                   />
                 </View>

@@ -186,6 +186,16 @@ app.post('/api/tasks/delete', (req, res) => {
   }
 });
 
+app.get('/api/report/sizes', async (req, res) => {
+  const userId = req.query.uid;
+
+  const query = 'CALL GetUserTaskSizes(?)';
+  db.query(query, [userId], (error, results) => {
+      if (error) return res.status(500).json({ error: error.message });
+      res.status(200).json({ taskSizes: results[0] });
+  });
+});
+
 app.get('/api/report/completed', (req, res) => {
   const userId = req.query.uid;
   const startDate = req.query.startDate;
